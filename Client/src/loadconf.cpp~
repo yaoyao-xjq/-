@@ -1,0 +1,152 @@
+#include <../include/loadconf.h>
+int  loadconfig(Sconfig* sc)
+{
+	char temp[1];
+	int name_num=0;
+	int n;
+	int conffd=0;	
+	char buf[BUFSIZE];
+	char * strtime=buf;
+	if(sc==NULL) 						//判断sc是否为NULL
+	{
+		printf("by loadconfig: sc = NULL\n");
+		return 0;
+	}
+
+	if(-1 == (conffd=open("../lib/Variable.conf",O_RDONLY)))//读取 .conf文件
+	{	
+		perror("load config faild\n");
+		return 0;
+	}
+	get_line(conffd,buf);  				//获取第一行总人数
+	sc->peoplenum=atoi(buf);    		//赋值给全局变量定义全局宏
+
+	if(NULL==(sc->elem = (char**)malloc(sizeof(char*)*sc->peoplenum)))//为elem申请指针数组空间
+	{	
+		perror("malloc elem faild\n");
+		return 0;
+	}
+
+	for(int j=0;j<sc->peoplenum;j++)//为elem内元素的指针申请空间
+	{
+		if(NULL==(sc->elem[j]=(char*)malloc(sizeof(char)*NAMESIZE)))
+		{	
+			perror("malloc elem name faild\n");
+			return 0;
+		}
+	}
+	n=1;
+	for(int i=0;i<sc->peoplenum;i++)//把从config读出的姓名存入数组
+	{
+
+		if(n<=0)
+			break;
+		memset(buf,0,BUFSIZE); 	//清空buf
+		n=get_line(conffd,buf); 		//取出一行姓名
+		for(int j=0;;j++) 		//存入数组
+		{
+			if(buf[j]=='\0') 	//判断是不是姓名结束
+			{
+				sc->elem[name_num][j]=buf[j];
+				break;
+			}
+			if(j>NAMESIZE) 		//判断姓名是否符合规定
+			{
+				printf("err: %d's name is too long \n",name_num+1);
+
+				break;
+			}
+			sc->elem[name_num][j]=buf[j];
+		}
+		name_num++;
+	}
+
+
+
+	memset(buf,0,BUFSIZE);// 赋值port
+	get_line(conffd,buf);
+	sc->port=atoi(buf);
+
+	memset(buf,0,BUFSIZE);// 赋值ip
+	get_line(conffd,sc->ip);
+
+
+	memset(buf,0,BUFSIZE);// 赋值宽高
+	get_line(conffd,buf);
+	sc->img_width=atoi(buf);
+
+	memset(buf,0,BUFSIZE);// 赋值宽高
+	get_line(conffd,buf);
+	sc->img_height=atoi(buf);
+
+	memset(buf,0,BUFSIZE);// 赋值匹配率
+	get_line(conffd,buf);
+	sc->matching_rate=atof(buf);
+
+	memset(buf,0,BUFSIZE);// 赋值STARTTIME
+	get_line(conffd,buf);
+	strtime=strtok(buf,":");
+	sc->starttime.tm_hour=atoi(strtime);
+	strtime=strtok(NULL,":");
+	sc->starttime.tm_min=atoi(strtime);
+	strtime=strtok(NULL,":");
+	sc->starttime.tm_sec=atoi(strtime);
+	//printf("%d:%d:%d\n",sc->starttime.tm_hour,sc->starttime.tm_min,sc->starttime.tm_sec);
+	strtime=buf;
+	memset(buf,0,BUFSIZE);// 赋值ENDTIME
+	get_line(conffd,buf);
+	strtime=strtok(buf,":");
+	sc->endtime.tm_hour=atoi(strtime);
+	strtime=strtok(NULL,":");
+	sc->endtime.tm_min=atoi(strtime);
+	strtime=strtok(NULL,":");
+	sc->endtime.tm_sec=atoi(strtime);
+	//printf("%d:%d:%d\n",sc->endtime.tm_hour,sc->endtime.tm_min,sc->endtime.tm_sec);
+
+
+
+	memset(buf,0,BUFSIZE);// 赋值一个人的图数
+	get_line(conffd,buf);
+	sc->imgperpeople=atoi(buf);
+
+	memset(buf,0,BUFSIZE);// 赋值ser编号
+	get_line(conffd,buf);
+	sc->ser_idtofd=atoi(buf);
+	printf("ser_idtofd:%d\n",sc->ser_idtofd);
+	close(conffd); 				//关闭文件fd
+	return 1;
+}
+int  get_line(int conffd,char* buf)
+{
+	int i=0;
+	int n=1;
+	char temp[1];
+	char ch='#';
+	while(1) 			//一个字符一个字符读取 直到遇到'\n'
+	{
+		if((n=read(conffd,temp,1))==0)break;
+		if((temp[0]=='\n')||(temp[0]=='\''))break;
+		buf[i++]=temp[0];
+	}
+	buf[i]='\0';
+	return n;
+}
+Sconfig* createSconfig() {
+
+	Sconfig* config = (Sconfig*)malloc(sizeof(Sconfig));
+	return config;
+}
+void destorySconfig(Sconfig *Sc) {
+	free(Sc->elem);
+	Sc-> port=0;
+	Sc-> matching_rate=0;//匹配率
+	Sc-> img_width=0;		//图片宽度
+	Sc-> img_height=0 ;	//图片高度
+	Sc-> peoplenum=0; //当前人数
+	Sc-> imgperpeople=0; //train库每人图片数
+	Sc-> ser_idtofd=0; //server分配编号
+	memset(&Sc->ip,0,sizeof(Sc->ip));	//ip地址
+	memset(&Sc->starttime,0,sizeof(struct tm));
+	memset(&Sc->endtime,0,sizeof(struct tm));
+}
+
